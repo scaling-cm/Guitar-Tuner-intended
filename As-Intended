@@ -1,0 +1,73 @@
+#include <Stepper.h> // Include the Stepper library
+
+const int ledPins[6] = {2, 3, 4, 5, 6, 7}; // Array of pins for the LED lights
+const int buttonPin = 8; // Pin for the button
+const int motorPin1 = 9; // Pin for the first motor coil (Phase A)
+const int motorPin2 = 10; // Pin for the second motor coil (Phase B)
+const int stepsPerRevolution = 200; // Number of steps per revolution for the stepper motor
+
+Stepper motor(stepsPerRevolution, motorPin1, motorPin2); // Create a Stepper object
+
+int buttonState = 0; // Variable to store the state of the button
+int currentString = 0; // Variable to store the current string being tuned
+
+void setup() {
+  for (int i = 0; i < 6; i++) {
+    pinMode(ledPins[i], OUTPUT); // Set the LED pins as outputs
+  }
+  pinMode(buttonPin, INPUT_PULLUP); // Set the button pin as an input with a pull-up resistor
+  motor.setSpeed(60); // Set the speed of the stepper motor (60 rpm)
+}
+
+void loop() {
+  buttonState = digitalRead(buttonPin); // Read the state of the button
+
+  if (buttonState == LOW) { // If the button is pressed
+    currentString++; // Move to the next string
+    if (currentString > 5) { // If we've reached the last string
+      currentString = 0; // Reset to the first string
+    }
+    for (int i = 0; i < 6; i++) { // Turn off all the LED lights
+      digitalWrite(ledPins[i], LOW);
+    }
+    digitalWrite(ledPins[currentString], HIGH); // Turn on the LED light for the current string
+    delay(200); // Debounce delay
+  }
+
+   // Tune the current string using the stepper motor
+  int currentNote = getNoteFrequency(currentString); // Get the frequency of the current note
+  int currentTension = getStringTension(currentString); // Get the tension of the current string
+  int targetTension = getTargetTension(currentNote); // Get the target tension for the current note
+  int tensionDifference = targetTension - currentTension; // Calculate the difference between the target and current tensions
+
+  if (tensionDifference > 0) { // If the string is too loose
+    motor.step(stepsPerRevolution); // Tighten the string
+  } else if (tensionDifference < 0) { // If the string is too tight
+    motor.step(-stepsPerRevolution); // Loosen the string
+  }
+}
+
+// Function to get the frequency of a given note
+int getNoteFrequency(int note) {
+  // Array of frequencies for each note (E2-B6)
+  int frequencies[24] = {82, 87, 92, 98, 104, 110, 117, 123, 131, 139, 147, 156, 165, 175, 185, 196, 208, 220, 233, 247, 262, 277, 294, 311};
+  return frequencies[note];
+}
+
+// Function to get the tension of a given string
+int getStringTension(int string) {
+  // Array of tensions for each string (E-E)
+  int tensions[6] = {23, 21, 18, 14, 11, 7};
+  return tensions[string];
+}
+
+// Function to get the target tension for a given frequency
+int getTargetTension(int frequency) {
+  // Array of target tensions for each frequency
+  int tensions[24] = {23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
+  for (int i = 0; i < 24; i++) {
+    if (frequency == frequencies[i]) { // Find the index of the given frequency in the frequencies array
+      return tensions[i]; // Return the corresponding tension from the tensions array
+    }
+  }
+}
